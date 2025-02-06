@@ -182,7 +182,7 @@ export default function Page({ agentId }: { agentId: UUID }) {
                                 >
                                     {message?.user !== "user" ? (
                                         <Avatar className="size-8 p-1 border rounded-full select-none">
-                                            <AvatarImage src="/elizaos-icon.png" />
+                                            <AvatarImage src="/zend.png" />
                                         </Avatar>
                                     ) : null}
                                     <div className="flex flex-col">
