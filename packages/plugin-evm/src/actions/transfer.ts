@@ -8,19 +8,19 @@ import {
     type IAgentRuntime,
     type Memory,
     type State,
+    elizaLogger,
 } from "@elizaos/core";
-
 import { initWalletProvider, WalletProvider } from "../providers/wallet";
 import type { Transaction, TransferParams } from "../types";
 import { transferTemplate } from "../templates";
 
 // Exported for tests
 export class TransferAction {
-    constructor(private walletProvider: WalletProvider) {}
+    constructor(private walletProvider: WalletProvider) { }
 
     async transfer(params: TransferParams): Promise<Transaction> {
         console.log(
-            `Transferring: ${params.amount} tokens to (${params.toAddress} on ${params.fromChain})`
+            `Transferring: ${params.amount} tokens to (${params.toAddress} on ${params.fromChain}), Params: ${params}`
         );
 
         if (!params.data) {
@@ -33,6 +33,12 @@ export class TransferAction {
             params.fromChain
         );
 
+        // Check if the toAddress is a Twitter handle (starts with @)
+        let toAddress = params.toAddress;
+        if (toAddress.startsWith('@')) {
+            console.log("This is a TWITTER")
+        }
+
         try {
             const hash = await walletClient.sendTransaction({
                 account: walletClient.account,
@@ -40,10 +46,10 @@ export class TransferAction {
                 value: parseEther(params.amount),
                 data: params.data as Hex,
                 kzg: {
-                    blobToKzgCommitment: function (_: ByteArray): ByteArray {
+                    blobToKzgCommitment: function(_: ByteArray): ByteArray {
                         throw new Error("Function not implemented.");
                     },
-                    computeBlobKzgProof: function (
+                    computeBlobKzgProof: function(
                         _blob: ByteArray,
                         _commitment: ByteArray
                     ): ByteArray {
@@ -52,6 +58,10 @@ export class TransferAction {
                 },
                 chain: undefined,
             });
+
+            elizaLogger.log("EVM Transfer Params" + params);
+            console.log("EVM Transfer Params:", params);
+            // privy function to handle user's twitter's handle to get user address
 
             return {
                 hash,
@@ -79,6 +89,8 @@ const buildTransferDetails = async (
         template: transferTemplate,
     });
 
+    console.log("buildTransferDetails, context", context)
+
     const transferDetails = (await generateObjectDeprecated({
         runtime,
         context,
@@ -90,18 +102,19 @@ const buildTransferDetails = async (
     if (!existingChain) {
         throw new Error(
             "The chain " +
-                transferDetails.fromChain +
-                " not configured yet. Add the chain or choose one from configured: " +
-                chains.toString()
+            transferDetails.fromChain +
+            " not configured yet. Add the chain or choose one from configured: " +
+            chains.toString()
         );
     }
 
+    console.log("buildTransferDetails transferDetails:", transferDetails);
     return transferDetails;
 };
 
 export const transferAction: Action = {
     name: "transfer",
-    description: "Transfer tokens between addresses on the same chain",
+    description: "Transfer tokens between addresses on the same chain. You can also use a Twitter handle (@username) in place of an Ethereum address.",
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
@@ -126,6 +139,7 @@ export const transferAction: Action = {
             walletProvider
         );
 
+        console.log("transferAction: paramOptions", paramOptions);
         try {
             const transferResp = await action.transfer(paramOptions);
             if (callback) {
@@ -161,14 +175,14 @@ export const transferAction: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "I'll help you transfer 1 ETH to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                    text: "I'll help you transfer 1 Sepolia ETH to @twitterusername",
                     action: "SEND_TOKENS",
                 },
             },
             {
                 user: "user",
                 content: {
-                    text: "Transfer 1 ETH to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                    text: "Transfer 1 Sepolia ETH to @twitterusername",
                     action: "SEND_TOKENS",
                 },
             },
